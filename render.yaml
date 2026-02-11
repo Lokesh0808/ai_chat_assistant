@@ -19,8 +19,9 @@ services:
     buildCommand: npm install && npm run build
     publishPath: dist
     envVars:
-      # IMPORTANT: Set this to your backend service URL on Render
-      # Format: https://your-backend-service-name.onrender.com
+      # Backend API URL - MUST point to your backend service
+      # After deploying backend, set this to: https://voice-ai-backend.onrender.com
+      # Replace 'voice-ai-backend' with your actual backend service name
       - key: VITE_API_URL
         value: https://voice-ai-backend.onrender.com
 

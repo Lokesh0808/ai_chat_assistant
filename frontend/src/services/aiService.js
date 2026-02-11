@@ -1,6 +1,31 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// Get backend URL from environment or use relative path in dev
+const getBackendURL = () => {
+  const baseUrl = import.meta.env.VITE_API_URL;
+  
+  if (!baseUrl) {
+    // Development: use relative /api for Vite proxy
+    return '/api';
+  }
+  
+  // Production: ensure URL is well-formed
+  let url = baseUrl.trim();
+  
+  // Remove trailing slash if present
+  if (url.endsWith('/')) {
+    url = url.slice(0, -1);
+  }
+  
+  // Ensure protocol is included
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = `https://${url}`;
+  }
+  
+  return url;
+};
+
+const API_URL = getBackendURL();
 
 // Log the API URL being used (for debugging)
 console.log('[API Config]', {
@@ -39,11 +64,13 @@ export const aiService = {
       if (error.code === 'ECONNABORTED') {
         throw new Error('Request timeout - backend is not responding');
       } else if (error.message === 'Network Error' || !error.response) {
-        throw new Error(`Network Error: Cannot connect to API at ${API_URL}`);
+        throw new Error(`Network Error: Cannot connect to backend at ${API_URL}`);
       } else if (error.response?.status === 404) {
-        throw new Error('API endpoint not found - backend may not be running');
+        throw new Error(`API endpoint not found at ${error.config.url}`);
       } else if (error.response?.status === 504) {
         throw new Error('Bad Gateway - backend service is unavailable');
+      } else if (error.response?.status === 403) {
+        throw new Error('Access forbidden - check CORS configuration');
       }
       
       throw error;
@@ -69,10 +96,10 @@ export const aiService = {
   // Debug endpoint to check API connectivity
   checkHealth: async () => {
     try {
-      const endpoint = `${API_URL.replace('/ask-ai', '').replace('/clear-session', '')}/health`;
-      console.log('[Health Check]', { endpoint });
+      const healthUrl = `${API_URL}/health`;
+      console.log('[Health Check]', { endpoint: healthUrl });
       
-      const response = await axios.get(endpoint, { timeout: 5000 });
+      const response = await axios.get(healthUrl, { timeout: 5000 });
       console.log('[Health Check Response]', response.data);
       return response.data;
     } catch (error) {

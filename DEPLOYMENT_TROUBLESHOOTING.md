@@ -1,104 +1,141 @@
 # Production Deployment Troubleshooting Guide
 
-## Common Issues and Fixes
+## 404 Error in Production
 
-### Network Error on Production
+If you see "API endpoint not found" or "404" error when trying to send a message:
 
-If you see "Network Error: Cannot connect to API" in production, follow these steps:
+### Quick Fix Checklist
 
-#### 1. Check Your Render Environment Variables
+1. **Frontend service is getting wrong URL**
+   - The frontend needs to know your backend's exact URL
+   - Example error in console: `ai-chat-assistant-vf.ender.com//ask-ai`
+   - This means `VITE_API_URL` is NOT set correctly
 
-**For the Backend Service (voice-ai-backend):**
-- No special environment variables needed
-- Make sure `NODE_ENV` is set to `production`
+2. **Verify Render Deployment**
+   - Backend service name: `voice-ai-backend`
+   - Frontend service name: `voice-ai-frontend`
+   - Your actual backend URL will be: `https://voice-ai-backend.onrender.com` (replace with your service name)
 
-**For the Frontend Service (voice-ai-frontend):**
-- Go to Render Dashboard → voice-ai-frontend → Environment
-- Add/Update: `VITE_API_URL` = `https://voice-ai-backend.onrender.com`
-  - Replace `voice-ai-backend` with your actual backend service name if different
-
-#### 2. Check Backend Service Status
-
-1. Go to Render Dashboard → voice-ai-backend
-2. Check the "Latest Deploy" tab - look for errors in the build/start logs
-3. Go to the "Logs" tab and scroll to see recent activity
-4. If it says "Service is running" - the backend is online
-
-#### 3. Verify Frontend Build
-
-1. Go to Render Dashboard → voice-ai-frontend
-2. Check "Latest Deploy" → "Build Logs"
-3. Look for: `VITE_API_URL = https://voice-ai-backend.onrender.com`
-4. If not showing, the environment variable wasn't set during build
-
-#### 4. Check Browser Console
-
-1. Open your site in browser
-2. Press `F12` to open Developer Tools
-3. Go to Console tab
-4. Look for `[API Config]` entry - it should show:
-   - `VITE_API_URL: https://voice-ai-backend.onrender.com`
-   - `API_URL: https://voice-ai-backend.onrender.com`
-
-If it shows `API_URL: /api` - this means `VITE_API_URL` wasn't set!
-
-#### 5. Manual Fix on Render
-
-If environment variable doesn't apply:
-
-1. **Delete and Recreate Services** (nuclear option):
+3. **Set the Environment Variable on Render**
    - Go to Render Dashboard
-   - Delete both services
-   - Re-import from GitHub using the new `render.yaml`
-   - Make sure environment variables are set during creation
+   - Click **voice-ai-frontend** service
+   - Go to **Environment** tab
+   - Find or create `VITE_API_URL` variable
+   - Set it to: `https://voice-ai-backend.onrender.com`
+   - Replace `voice-ai-backend` with your actual backend service name from Render
 
-2. **Or Add Event to Manually Trigger Rebuild**:
+4. **Rebuild the Frontend**
    - Go to voice-ai-frontend Settings
-   - Click "Clear Build Cache"
-   - Click "Manual Deploy" → "Deploy Latest Commit"
-   - This forces a fresh build with current environment variables
+   - Click **Manual Deploy** to rebuild with new environment variable
+   - Wait ~5-10 minutes for build to complete
+   - Check the build logs to confirm `VITE_API_URL` is being used
 
-### Connection Still Failing?
+5. **Test in Console**
+   - Open your app in browser
+   - Press F12 (Developer Console)
+   - Look for `[API Config]` message
+   - It should show your full backend URL, like:
+     ```
+     API_URL: https://voice-ai-backend.onrender.com
+     ```
+   - NOT `/api` or partial domain
 
-If backend URL is correct but still failing:
+## Common Issues and Solutions
 
-1. **Check Backend Health Endpoint:**
-   - In browser, visit: `https://voice-ai-backend.onrender.com/health`
-   - You should see: `{"status":"OK",...}`
-   - If 404 or timeout → backend service isn't running
+### Issue: Console shows truncated or malformed URL
+- Error: `ai-chat-assistant-vf.ender.com//ask-ai`
+- Cause: `VITE_API_URL` environment variable not set during build
+- Fix: Set `VITE_API_URL` on frontend service and rebuild
 
-2. **Check CORS Settings:**
-   - The backend now accepts:
-     - `.onrender.com` domains
-     - `.vercel.app` domains
-     - `localhost` for dev
-   - If using custom domain, it may need additional CORS configuration
+### Issue: Console shows `API_URL: /api`
+- Cause: `VITE_API_URL` is empty, using fallback for development
+- Fix: Set `VITE_API_URL=https://voice-ai-backend.onrender.com` and rebuild
 
-3. **Render Service Cold Starts:**
-   - Render may put services to sleep if unused
-   - First request after sleep can take 30+ seconds
-   - Wait 30 seconds and try again
+### Issue: Status 404 after setting environment variable
+- The environment variable might not be applied yet
+- Click **Clear Build Cache** then **Manual Deploy** on frontend
+- Wait for build to finish, then reload the page
 
-## Quick Deployment Checklist
+### Issue: Backend is responding but still 404
+- Check backend service logs on Render
+- Verify backend is actually running (should see "Server running on port...")
+- Make sure backend routes are correct: `/api/ask-ai` and `/api/clear-session`
 
-- [ ] Backend service deployed and showing "Live"
-- [ ] Frontend service deployed and showing "Live"
-- [ ] `VITE_API_URL` environment variable set on frontend service
-- [ ] Rebuild frontend after setting environment variable
-- [ ] Backend health check passes (`/health` endpoint)
-- [ ] Check browser console for `[API Config]` with correct URL
-- [ ] Try using "Check Server" button in error message
+## Network Error vs 404 Error
+
+- **Network Error**: Can't reach the server at all → Check if URLs are correct and services are running
+- **404 Error**: Server is reachable but endpoint doesn't exist → Check `VITE_API_URL` is correct
+
+## Render Service Structure
+
+Your deployment should have:
+
+```
+Render Dashboard
+├── voice-ai-backend
+│   ├── Type: Web Service (Node.js)
+│   ├── Status: Live
+│   └── URL: https://voice-ai-backend.onrender.com
+│       (your actual service name may be different)
+│
+└── voice-ai-frontend
+    ├── Type: Static Site
+    ├── Status: Live
+    ├── Environment: VITE_API_URL=https://voice-ai-backend.onrender.com
+    └── URL: https://voice-ai-frontend.onrender.com
+        (your actual service name may be different)
+```
+
+## Step-by-Step Fix
+
+1. **Note your actual Render service names**
+   - Go to Render Dashboard
+   - See what backend service is named (e.g., `voice-ai-backend`)
+   - See what frontend service is named (e.g., `voice-ai-frontend`)
+
+2. **Update Environment Variable**
+   - Click frontend service
+   - Environment tab
+   - Add: `VITE_API_URL = https://voice-ai-backend.onrender.com`
+   - If backend has different name, update accordingly
+
+3. **Force Rebuild**
+   - Click Settings (gear icon)
+   - Clear Build Cache
+   - Manual Deploy
+   - Wait for green "Live" status
+
+4. **Test**
+   - Open frontend URL
+   - F12 Console
+   - Confirm `[API Config]` shows your backend URL
+   - Try sending a message
+
+5. **If still failing**
+   - Frontend console should show exact error URL
+   - Compare to actual backend URL in Render Dashboard
+   - They must match exactly (including protocol and domain)
 
 ## Local Development
 
-For local development, the app uses the Vite proxy automatically:
-- No need to set `VITE_API_URL`
-- Backend should run on `http://localhost:5000`
-- Frontend runs on `http://localhost:5173`
+For local development, you don't need to set `VITE_API_URL`:
+
+```bash
+cd backend
+npm run dev      # Runs on http://localhost:5000
+
+cd frontend
+npm run dev      # Runs on http://localhost:5173
+               # Automatically proxies /api to http://localhost:5000
+```
+
+No environment variables needed - Vite proxy handles it automatically.
 
 ## Still Not Working?
 
-1. Open browser Console (F12)
-2. Click the "Check Server" button in the error message
-3. This will tell you if the backend is reachable
-4. Copy any error messages and check the Backend service logs on Render
+1. **Check console errors** (F12)
+2. **Compare frontend-reported URL to Render dashboard**
+3. **Check backend service logs** on Render for errors
+4. **Try the Health Check button** in the error message
+5. **Clear browser cache** (Ctrl+Shift+Delete)
+6. **Wait 30 seconds** - Render services can be slow to wake up
