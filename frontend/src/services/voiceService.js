@@ -165,12 +165,22 @@ class VoiceService {
     
     // Request microphone permission if not already granted
     if (navigator.mediaDevices?.getUserMedia) {
+      console.log('📱 Requesting microphone permission...');
       navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(() => {
-          console.log('✅ Microphone permission granted');
+        .then((stream) => {
+          console.log('✅ Microphone permission granted - stream active:', stream.active);
+          // Stop the stream right away - we just needed the permission
+          stream.getTracks().forEach(track => track.stop());
+          
           try {
             this.recognition.start();
             console.log('✅ Speech recognition started successfully');
+            // Log audio track availability
+            navigator.mediaDevices.enumerateDevices().then(devices => {
+              const audioDevices = devices.filter(d => d.kind === 'audioinput');
+              console.log(`📋 Available audio input devices: ${audioDevices.length}`);
+              audioDevices.forEach((d, i) => console.log(`  ${i + 1}. ${d.label || 'Unknown device'}`));
+            });
           } catch (err) {
             console.error('❌ Error starting recognition after permission:', err);
             if (onError) {
@@ -180,12 +190,21 @@ class VoiceService {
         })
         .catch((err) => {
           console.error('❌ Microphone permission denied:', err);
+          console.error('   Error name:', err.name);
+          console.error('   Error message:', err.message);
           if (onError) {
-            onError('not-allowed', 'Microphone permission denied. Please enable it in browser settings.');
+            if (err.name === 'NotAllowedError') {
+              onError('not-allowed', 'Microphone permission denied. Please enable microphone access and reload the page.');
+            } else if (err.name === 'NotFoundError') {
+              onError('audio-capture', 'No microphone found. Please check your device has a microphone.');
+            } else {
+              onError('audio-capture', `Microphone error: ${err.message}`);
+            }
           }
         });
     } else {
       // Fallback: try to start without explicit permission request
+      console.log('⚠️ No getUserMedia available, attempting to start recognition directly...');
       try {
         this.recognition.start();
         console.log('✅ Speech recognition started (no explicit microphone permission available)');
