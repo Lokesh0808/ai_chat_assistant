@@ -46,7 +46,8 @@ console.log('[API Config]', {
 export const aiService = {
   askAI: async (message, sessionId) => {
     try {
-      const endpoint = `${API_URL}/ask-ai`;
+      // Backend routes are under /api path
+      const endpoint = `${API_URL}/api/ask-ai`;
       console.log('[API Request]', { endpoint, message: message.substring(0, 50), timestamp: new Date().toISOString() });
       
       const response = await axios.post(endpoint, {
@@ -74,7 +75,7 @@ export const aiService = {
       } else if (error.message === 'Network Error' || !error.response) {
         throw new Error(`Cannot connect to backend at ${API_URL}\n\nCheck RENDER_SETUP.md`);
       } else if (error.response?.status === 404) {
-        throw new Error(`Endpoint not found\n\nIf you just deployed, wait 30 seconds for cold start.\nIf error persists, backend service may not be running.\n\nCheck RENDER_SETUP.md`);
+        throw new Error(`Endpoint not found at ${endpoint}\n\nIf you just deployed, wait 30 seconds for cold start.\nIf error persists, backend service may not be running.\n\nCheck RENDER_SETUP.md`);
       } else if (error.response?.status === 504) {
         throw new Error('Backend service unavailable - may be starting up');
       } else if (error.response?.status === 403) {
@@ -87,7 +88,8 @@ export const aiService = {
 
   clearSession: async (sessionId) => {
     try {
-      const endpoint = `${API_URL}/clear-session`;
+      // Backend routes are under /api path
+      const endpoint = `${API_URL}/api/clear-session`;
       console.log('[API Request]', { endpoint: endpoint });
       
       await axios.post(endpoint, {
