@@ -224,23 +224,44 @@ export const ChatInterface = () => {
 
             {/* Bottom Voice Control Section - Floating */}
             <div className="fixed bottom-0 left-0 right-0 flex-shrink-0 px-0.5 md:px-3 py-0.5 md:py-1.5 bg-gradient-to-t from-purple-900 via-purple-900 to-transparent border-t border-gray-600 border-opacity-30 z-50">
-              {/* Error Display */}
+              {/* Error Display with Health Check */}
               {(voiceRecognition.error || conversation.error || voiceSynthesis.error) && (
                 <div className="glass p-2 rounded border border-red-500 border-opacity-50 flex items-start gap-1 mb-1 justify-between">
-                  <div className="flex items-start gap-1 flex-1">
+                  <div className="flex items-start gap-1 flex-1 min-w-0">
                     <AlertCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
-                    <div className="text-red-200 text-xs">
+                    <div className="text-red-200 text-xs break-words">
                       {voiceRecognition.error || conversation.error || voiceSynthesis.error}
                     </div>
                   </div>
-                  {voiceRecognition.error && (
-                    <button
-                      onClick={() => voiceRecognition.reset()}
-                      className="text-xs text-red-300 hover:text-red-100 hover:bg-red-500 hover:bg-opacity-20 px-1 py-0.5 rounded ml-1 flex-shrink-0 transition-colors"
-                    >
-                      Dismiss
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1 ml-1 flex-shrink-0">
+                    {conversation.error && (
+                      <button
+                        onClick={() => {
+                          // Check API health
+                          import('../services/aiService').then(m => {
+                            m.aiService.checkHealth().then(health => {
+                              if (health.status === 'OK') {
+                                alert('✓ Backend is online! Try sending a message again.');
+                              } else {
+                                alert('✗ Backend is not responding.\n\nTroubleshooting:\n1. Check VITE_API_URL environment variable\n2. Ensure backend service is running\n3. Check browser console (F12) for more details');
+                              }
+                            });
+                          });
+                        }}
+                        className="text-xs text-blue-300 hover:text-blue-100 hover:bg-blue-500 hover:bg-opacity-20 px-1 py-0.5 rounded transition-colors whitespace-nowrap"
+                      >
+                        Check Server
+                      </button>
+                    )}
+                    {voiceRecognition.error && (
+                      <button
+                        onClick={() => voiceRecognition.reset()}
+                        className="text-xs text-red-300 hover:text-red-100 hover:bg-red-500 hover:bg-opacity-20 px-1 py-0.5 rounded transition-colors whitespace-nowrap"
+                      >
+                        Dismiss
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
