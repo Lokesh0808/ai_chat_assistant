@@ -1,5 +1,37 @@
 # Production Deployment Troubleshooting Guide
 
+## 🚨 Critical: API Endpoint Not Found
+
+**Error:** "API endpoint not found at https://ai-chat-assistant-vfan.onrender.com/ask-ai"
+
+**This means:** Your frontend is pointing to ITSELF instead of the backend!
+
+### Root Cause
+You likely **deployed ONLY the frontend** without deploying the backend service separately.
+
+### Immediate Fix
+
+**See [RENDER_SETUP.md](./RENDER_SETUP.md) for complete deployment instructions.**
+
+In short:
+1. Your app needs **TWO separate services** on Render:
+   - Backend (Node.js Web Service)
+   - Frontend (Static Site)
+2. Currently you only have the frontend
+3. You need to create the backend service
+
+### Quick Option: Use Blueprint
+
+1. Go to Render Dashboard
+2. Click **New** → **Blueprint**
+3. Paste repo: `https://github.com/Lokesh0808/ai_chat_assistant.git`
+4. Render automatically deploys BOTH services from `render.yaml`
+5. Takes 15-20 minutes
+
+**Full steps**: See [RENDER_SETUP.md](./RENDER_SETUP.md)
+
+---
+
 ## 404 Error in Production
 
 If you see "API endpoint not found" or "404" error when trying to send a message:
@@ -45,7 +77,7 @@ If you see "API endpoint not found" or "404" error when trying to send a message
 ### Issue: Console shows truncated or malformed URL
 - Error: `ai-chat-assistant-vf.ender.com//ask-ai`
 - Cause: `VITE_API_URL` environment variable not set during build
-- Fix: Set `VITE_API_URL` on frontend service and rebuild
+- Fix: See [RENDER_SETUP.md](./RENDER_SETUP.md) - deploy using Blueprint or manual steps
 
 ### Issue: Console shows `API_URL: /api`
 - Cause: `VITE_API_URL` is empty, using fallback for development
@@ -60,6 +92,11 @@ If you see "API endpoint not found" or "404" error when trying to send a message
 - Check backend service logs on Render
 - Verify backend is actually running (should see "Server running on port...")
 - Make sure backend routes are correct: `/api/ask-ai` and `/api/clear-session`
+
+### Issue: Console shows WARNING about API pointing to frontend
+- Message: "WARNING: API_URL points to frontend domain!"
+- Cause: Backend service not deployed
+- Fix: You MUST deploy backend service separately. See [RENDER_SETUP.md](./RENDER_SETUP.md)
 
 ## Network Error vs 404 Error
 
@@ -86,20 +123,23 @@ Render Dashboard
         (your actual service name may be different)
 ```
 
+**If you only see one service (frontend), you need to follow [RENDER_SETUP.md](./RENDER_SETUP.md) to create the backend!**
+
 ## Step-by-Step Fix
 
-1. **Note your actual Render service names**
+1. **Check how many services you have**
    - Go to Render Dashboard
-   - See what backend service is named (e.g., `voice-ai-backend`)
-   - See what frontend service is named (e.g., `voice-ai-frontend`)
+   - Count the services listed
+   - If only 1 (frontend) → Follow [RENDER_SETUP.md](./RENDER_SETUP.md) to add backend
 
-2. **Update Environment Variable**
+2. **If you have both services:**
+   - Note your backend service name (likely `voice-ai-backend` or custom name)
    - Click frontend service
    - Environment tab
-   - Add: `VITE_API_URL = https://voice-ai-backend.onrender.com`
-   - If backend has different name, update accordingly
+   - Set `VITE_API_URL` to your backend URL
+   - Example: `https://voice-ai-backend.onrender.com`
 
-3. **Force Rebuild**
+3. **Rebuild frontend**
    - Click Settings (gear icon)
    - Clear Build Cache
    - Manual Deploy
@@ -139,3 +179,4 @@ No environment variables needed - Vite proxy handles it automatically.
 4. **Try the Health Check button** in the error message
 5. **Clear browser cache** (Ctrl+Shift+Delete)
 6. **Wait 30 seconds** - Render services can be slow to wake up
+7. **See [RENDER_SETUP.md](./RENDER_SETUP.md)** for detailed deployment walkthrough

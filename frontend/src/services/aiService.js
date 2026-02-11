@@ -6,6 +6,7 @@ const getBackendURL = () => {
   
   if (!baseUrl) {
     // Development: use relative /api for Vite proxy
+    console.log('[API Config] No VITE_API_URL set - using local development proxy');
     return '/api';
   }
   
@@ -22,6 +23,12 @@ const getBackendURL = () => {
     url = `https://${url}`;
   }
   
+  // Safety check: make sure it's not pointing to frontend
+  if (url.includes('vfan') && url.includes('onrender')) {
+    console.warn('[API Config] WARNING: API_URL points to frontend domain! Check VITE_API_URL environment variable');
+    console.warn('[API Config] If you see this, your backend service might not be deployed. See RENDER_SETUP.md');
+  }
+  
   return url;
 };
 
@@ -29,17 +36,18 @@ const API_URL = getBackendURL();
 
 // Log the API URL being used (for debugging)
 console.log('[API Config]', {
-  VITE_API_URL: import.meta.env.VITE_API_URL,
+  VITE_API_URL: import.meta.env.VITE_API_URL || '(not set)',
   API_URL: API_URL,
   environment: import.meta.env.MODE,
-  isDevelopment: import.meta.env.DEV
+  isDevelopment: import.meta.env.DEV,
+  timestamp: new Date().toISOString()
 });
 
 export const aiService = {
   askAI: async (message, sessionId) => {
     try {
       const endpoint = `${API_URL}/ask-ai`;
-      console.log('[API Request]', { endpoint, message: message.substring(0, 50) });
+      console.log('[API Request]', { endpoint, message: message.substring(0, 50), timestamp: new Date().toISOString() });
       
       const response = await axios.post(endpoint, {
         message,
@@ -64,13 +72,13 @@ export const aiService = {
       if (error.code === 'ECONNABORTED') {
         throw new Error('Request timeout - backend is not responding');
       } else if (error.message === 'Network Error' || !error.response) {
-        throw new Error(`Network Error: Cannot connect to backend at ${API_URL}`);
+        throw new Error(`Cannot connect to backend at ${API_URL}\n\nCheck RENDER_SETUP.md`);
       } else if (error.response?.status === 404) {
-        throw new Error(`API endpoint not found at ${error.config.url}`);
+        throw new Error(`Endpoint not found\n\nIf you just deployed, wait 30 seconds for cold start.\nIf error persists, backend service may not be running.\n\nCheck RENDER_SETUP.md`);
       } else if (error.response?.status === 504) {
-        throw new Error('Bad Gateway - backend service is unavailable');
+        throw new Error('Backend service unavailable - may be starting up');
       } else if (error.response?.status === 403) {
-        throw new Error('Access forbidden - check CORS configuration');
+        throw new Error('Access forbidden - CORS issue');
       }
       
       throw error;
@@ -97,7 +105,7 @@ export const aiService = {
   checkHealth: async () => {
     try {
       const healthUrl = `${API_URL}/health`;
-      console.log('[Health Check]', { endpoint: healthUrl });
+      console.log('[Health Check] Pinging:', healthUrl);
       
       const response = await axios.get(healthUrl, { timeout: 5000 });
       console.log('[Health Check Response]', response.data);
