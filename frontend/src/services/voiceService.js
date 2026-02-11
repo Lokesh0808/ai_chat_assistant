@@ -29,7 +29,7 @@ class VoiceService {
       this.isSpeaking = false;
       this.silenceTimeout = null;
       this.recognitionTimeout = null;
-      this.silenceThreshold = 2000; // 2 seconds of silence
+      this.silenceThreshold = 1800; // 1.8 seconds of silence to detect pause
       this.finalTranscript = '';
       
       // Configure recognition settings

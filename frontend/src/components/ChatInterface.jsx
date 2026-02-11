@@ -30,6 +30,17 @@ export const ChatInterface = () => {
   // Threshold for "too long" message (chars)
   const MESSAGE_LENGTH_THRESHOLD = 400;
 
+  // Start listening on component mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!manualStop) {
+        console.log('🎤 Starting initial listening on mount...');
+        voiceRecognition.startListening();
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     conversationEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -53,11 +64,13 @@ export const ChatInterface = () => {
           setLastSentMessage(message);
           handleSendMessage(message);
           setPendingMessage('');
+          // Reset voice recognition to clear completed text for next message
+          voiceRecognition.reset();
         }
         // If too long, keep pending so user can manually send
       }
     }
-  }, [voiceRecognition.completedText, voiceRecognition.isListening]);
+  }, [voiceRecognition.completedText, voiceRecognition.isListening, lastSentMessage, lastResponse]);
 
   // Auto-speak response when we have a new assistant message (skip if duplicate)
   useEffect(() => {
@@ -71,20 +84,22 @@ export const ChatInterface = () => {
     }
   }, [lastResponse, lastResponseText, voiceSynthesis]);
 
-  // Auto-restart listening after speech finishes (unless manually stopped) - CONTINUOUS LISTENING
+  // Auto-restart listening after message is sent and response received - CONTINUOUS LISTENING
   useEffect(() => {
-    // Keep listening active after response unless manually stopped
+    // Restart listening after response is received (not loading) and not manually stopped
     if (!voiceRecognition.isListening && !conversation.isLoading && !manualStop) {
-      // After response finishes, restart listening immediately
-      const timer = setTimeout(() => {
-        if (!voiceRecognition.isListening && !conversation.isLoading && !manualStop) {
-          console.log('🎤 Auto-restarting continuous listening...');
-          voiceRecognition.startListening();
-        }
-      }, 300); // Quick restart for continuous flow
-      return () => clearTimeout(timer);
+      // Only restart if we've already had at least one conversation exchange
+      if (conversation.history.length > 0) {
+        const timer = setTimeout(() => {
+          if (!voiceRecognition.isListening && !conversation.isLoading && !manualStop) {
+            console.log('🎤 Auto-restarting continuous listening after response...');
+            voiceRecognition.startListening();
+          }
+        }, 800); // Delay to ensure message was fully processed
+        return () => clearTimeout(timer);
+      }
     }
-  }, [voiceRecognition.isListening, conversation.isLoading, manualStop]);
+  }, [voiceRecognition.isListening, conversation.isLoading, manualStop, conversation.history.length]);
 
   const handleSendMessage = useCallback(async (message) => {
     if (!message?.trim() || conversation.isLoading) {
