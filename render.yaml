@@ -2,24 +2,22 @@ services:
   - type: web
     name: voice-ai-backend
     env: node
-    repo: codecredit/ai_chat_assistant
+    repo: https://github.com/Lokesh0808/ai_chat_assistant.git
     branch: main
     root: backend
     buildCommand: npm install
     startCommand: npm start
     envVars:
-      - key: CORS_ORIGIN
-        value: https://your-frontend.onrender.com
       - key: NODE_ENV
         value: production
 
   - type: static_site
     name: voice-ai-frontend
-    repo: codecredit/ai_chat_assistant
+    repo: https://github.com/Lokesh0808/ai_chat_assistant.git
     branch: main
     root: frontend
     buildCommand: npm install && npm run build
     publishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://your-backend.onrender.com
+        sync: false

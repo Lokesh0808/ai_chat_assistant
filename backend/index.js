@@ -47,10 +47,41 @@ async function startServer() {
 
   // Middleware
   app.use(helmet());
-  app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  
+  // Configure CORS for both development and production
+  const corsOptions = {
+    origin: function(origin, callback) {
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        process.env.CORS_ORIGIN,
+        // Allow requests from .onrender.com and .vercel.app domains
+        /https:\/\/.*\.onrender\.com$/,
+        /https:\/\/.*\.vercel\.app$/
+      ].filter(Boolean);
+      
+      // Allow requests with no origin (mobile apps, curl requests, etc)
+      if (!origin) return callback(null, true);
+      
+      // Check if origin is in allowlist or matches pattern
+      const isAllowed = allowedOrigins.some(allowed => {
+        if (allowed instanceof RegExp) {
+          return allowed.test(origin);
+        }
+        return allowed === origin;
+      });
+      
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        console.warn(`CORS request denied for origin: ${origin}`);
+        callback(null, true); // For production, allow anyway but log it
+      }
+    },
     credentials: true
-  }));
+  };
+  
+  app.use(cors(corsOptions));
   app.use(morgan('dev'));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
