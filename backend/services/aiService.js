@@ -81,6 +81,13 @@ export const getAIResponse = async (userMessage, sessionId) => {
         content: msg.content
       }));
 
+      // Add system prompt with interview context
+      const systemMessage = {
+        role: 'system',
+        content: 'You are an expert interviewer conducting a professional interview. Answer questions from the perspective of an interviewer who is knowledgeable, professional, and insightful. Provide concise, relevant answers that would be valuable in an interview setting. Be encouraging and provide constructive feedback when appropriate.'
+      };
+
+      messages.unshift(systemMessage); // Add system prompt at the beginning
       messages.push({ role: 'user', content: userMessage });
 
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {

@@ -74,21 +74,26 @@ class VoiceService {
       let interimTranscript = '';
       let newFinalTranscript = '';
 
+      // ONLY process results from the current result index onwards
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         console.log(`  Result ${i}: "${transcript}" (isFinal: ${event.results[i].isFinal})`);
         
         if (event.results[i].isFinal) {
-          newFinalTranscript += transcript + ' ';
+          // Only set final transcript for NEW final results, don't accumulate
+          newFinalTranscript = transcript.trim(); // Replace, don't append
         } else {
           interimTranscript += transcript;
         }
       }
 
-      // ACCUMULATE final transcript (don't replace it!)
+      // UPDATE final transcript (only for new final results)
       if (newFinalTranscript) {
-        this.finalTranscript += newFinalTranscript;
-        console.log('✅ Final transcript accumulated:', this.finalTranscript);
+        // Only accept new final if it's different from what we already have
+        if (newFinalTranscript !== this.finalTranscript) {
+          this.finalTranscript = newFinalTranscript;
+          console.log('✅ Final transcript set to:', this.finalTranscript);
+        }
       }
 
       // Reset silence timer when we get results
@@ -100,7 +105,7 @@ class VoiceService {
       if (this.onTranscriptCallback) {
         this.onTranscriptCallback({
           interim: interimTranscript,
-          final: this.finalTranscript.trim(),
+          final: this.finalTranscript,
           isFinal: newFinalTranscript.length > 0
         });
       }
