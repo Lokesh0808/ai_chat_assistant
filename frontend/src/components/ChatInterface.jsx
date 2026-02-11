@@ -84,22 +84,20 @@ export const ChatInterface = () => {
     }
   }, [lastResponse, lastResponseText, voiceSynthesis]);
 
-  // Auto-restart listening after message is sent and response received - CONTINUOUS LISTENING
+  // Keep listening continuous even while generating response - ALWAYS LISTENING
   useEffect(() => {
-    // Restart listening after response is received (not loading) and not manually stopped
-    if (!voiceRecognition.isListening && !conversation.isLoading && !manualStop) {
-      // Only restart if we've already had at least one conversation exchange
-      if (conversation.history.length > 0) {
-        const timer = setTimeout(() => {
-          if (!voiceRecognition.isListening && !conversation.isLoading && !manualStop) {
-            console.log('🎤 Auto-restarting continuous listening after response...');
-            voiceRecognition.startListening();
-          }
-        }, 800); // Delay to ensure message was fully processed
-        return () => clearTimeout(timer);
-      }
+    // Restart listening if not already listening and not manually stopped
+    // Keep listening EVEN while generating response (don't check isLoading)
+    if (!voiceRecognition.isListening && !manualStop) {
+      const timer = setTimeout(() => {
+        if (!voiceRecognition.isListening && !manualStop) {
+          console.log('🎤 Continuous listening active...');
+          voiceRecognition.startListening();
+        }
+      }, 300); // Quick restart to keep listening flowing
+      return () => clearTimeout(timer);
     }
-  }, [voiceRecognition.isListening, conversation.isLoading, manualStop, conversation.history.length]);
+  }, [voiceRecognition.isListening, manualStop]);
 
   const handleSendMessage = useCallback(async (message) => {
     if (!message?.trim() || conversation.isLoading) {
